@@ -28,5 +28,8 @@ endif ()
 
 add_executable(parser src/main.cpp)
 target_link_libraries(parser PRIVATE core_lib)
+if (MINGW OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_link_options(parser PRIVATE -static)
+endif()
 
 set_target_properties(parser PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
