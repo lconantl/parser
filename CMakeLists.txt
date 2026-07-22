@@ -17,7 +17,7 @@ else ()
     target_compile_options(core_lib PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif ()
 
-add_executable(start src/main.cpp)
-target_link_libraries(start PRIVATE core_lib)
+add_executable(parser src/main.cpp)
+target_link_libraries(parser PRIVATE core_lib)
 
-set_target_properties(start PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/res")
+set_target_properties(parser PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/res")
