@@ -83,7 +83,8 @@ void PrintHelpMessage()
 			  << "  -h, --help       Показать эту справку и выйти\n"
 			  << "  -c, --clipboard  Скопировать результат в буфер обмена\n\n"
 			  << "Примеры:\n"
-			  << "  dumper           Собрать текущую папку в файл dump.md\n"
+			  << "  dumper           Собрать текущую папку в файл dump.md (спросит подтверждение)\n"
+			  << "  dumper .         Собрать текущую папку (без подтверждения)\n"
 			  << "  dumper -c        Собрать текущую папку в буфер обмена\n"
 			  << "  dumper C:\\App    Собрать проект в файл C:\\App\\dump.md\n"
 			  << std::endl;
@@ -93,6 +94,7 @@ void PrintHelpMessage()
 Application::Application(const int argc, char* argv[])
 	: m_useClipboard(false)
 	, m_isHelpRequested(false)
+	, m_requiresConfirmation(false)
 {
 	AssertHasArguments(argc);
 	const std::vector<std::string> args = ConvertArguments(argc, argv);
@@ -101,6 +103,11 @@ Application::Application(const int argc, char* argv[])
 	if (m_isHelpRequested)
 	{
 		return;
+	}
+
+	if (args.size() == 1)
+	{
+		m_requiresConfirmation = true;
 	}
 
 	m_rootPath = ExtractRootPath(args);
@@ -118,6 +125,22 @@ void Application::Run() const
 	{
 		PrintHelpMessage();
 		return;
+	}
+
+	if (m_requiresConfirmation)
+	{
+		std::cout << "Будет просканирована директория:\n  "
+				  << m_rootPath.string() << "\n"
+				  << "Продолжить? (y/n): ";
+
+		std::string answer;
+		std::getline(std::cin, answer);
+
+		if (answer != "y" && answer != "Y" && answer != "н" && answer != "Н")
+		{
+			std::cout << "Сборка отменена\n";
+			return;
+		}
 	}
 
 	AssertModeAssigned(m_mode.get());
@@ -138,4 +161,13 @@ void Application::Run() const
 	m_mode->Execute(formatter);
 
 	target->Write(formatter.Build());
+
+	if (!m_useClipboard)
+	{
+		std::cout << "Проект успешно собран в файл dump.md\n";
+	}
+	else
+	{
+		std::cout << "Проект успешно скопирован в буфер обмена\n";
+	}
 }
