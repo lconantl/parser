@@ -1,5 +1,7 @@
 #include "TreeMode.hpp"
+#include <algorithm>
 #include <stdexcept>
+#include <vector>
 
 namespace
 {
@@ -17,26 +19,48 @@ void AppendTreeContent(
 	const std::string& prefix,
 	std::string& buffer)
 {
-	for (const auto& entry : std::filesystem::directory_iterator(currentPath))
+	std::vector<std::filesystem::directory_entry> files;
+	std::vector<std::filesystem::directory_entry> dirs;
+
+	for (const auto& entry : std::filesystem::directory_iterator(currentPath, std::filesystem::directory_options::skip_permission_denied))
 	{
 		if (filter.ShouldIgnore(entry.path()))
 		{
 			continue;
 		}
 
-		buffer += prefix + "|-- " + entry.path().filename().string() + "\n";
-
-		if (entry.is_directory())
+		if (entry.is_regular_file())
 		{
-			AppendTreeContent(entry.path(), filter, prefix + "    ", buffer);
+			files.push_back(entry);
 		}
+		else if (entry.is_directory())
+		{
+			dirs.push_back(entry);
+		}
+	}
+
+	auto sortByName = [](const std::filesystem::directory_entry& a, const std::filesystem::directory_entry& b) {
+		return a.path().filename().string() < b.path().filename().string();
+	};
+	std::ranges::sort(files, sortByName);
+	std::ranges::sort(dirs, sortByName);
+
+	for (const auto& file : files)
+	{
+		buffer += prefix + "|-- " + file.path().filename().string() + "\n";
+	}
+
+	for (const auto& dir : dirs)
+	{
+		buffer += prefix + "|-- " + dir.path().filename().string() + "\n";
+		AppendTreeContent(dir.path(), filter, prefix + "    ", buffer);
 	}
 }
 } // namespace
 
-TreeMode::TreeMode(std::filesystem::path rootPath, IgnoreFilter filter)
+TreeMode::TreeMode(std::filesystem::path rootPath, const IgnoreFilter& filter)
 	: m_rootPath(std::move(rootPath))
-	, m_filter(std::move(filter))
+	, m_filter(filter)
 {
 	AssertIsExistingDirectory(m_rootPath);
 }

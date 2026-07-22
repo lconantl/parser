@@ -7,7 +7,7 @@
 class ParseMode final : public IAppMode
 {
 public:
-	ParseMode(std::filesystem::path rootPath, IgnoreFilter filter);
+	ParseMode(std::filesystem::path rootPath, const IgnoreFilter& filter);
 	~ParseMode() override;
 
 	void Execute(MarkdownFormatter& formatter) override;

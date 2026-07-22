@@ -7,7 +7,7 @@
 class TreeMode final : public IAppMode
 {
 public:
-	TreeMode(std::filesystem::path rootPath, IgnoreFilter filter);
+	TreeMode(std::filesystem::path rootPath, const IgnoreFilter& filter);
 	~TreeMode() override;
 
 	void Execute(MarkdownFormatter& formatter) override;
