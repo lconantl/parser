@@ -1,17 +1,20 @@
+#include "app/Application.hpp"
+#include "utils/console/ConsoleEncoding.hpp"
+#include <cstdlib>
 #include <exception>
 #include <iostream>
-#include <ostream>
-#include <vector>
 
-int main(const int argc, char** argv)
+int main(const int argc, char* argv[])
 {
 	try
 	{
-		std::vector<std::string> args(argv, argv + argc);
+		ConsoleEncoding console;
+		const Application app(argc, argv);
+		app.Run();
 	}
-	catch (std::exception& e)
+	catch (const std::exception& e)
 	{
-		std::cerr << "Error: " << e.what() << std::endl;
+		std::cerr << "[Error] \t" << e.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 
