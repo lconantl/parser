@@ -1,0 +1,3 @@
+# Project Description
+
+Project Dumper is a fast, lightweight CLI utility built in modern C++ that traverses your project directories and serializes the codebase into a single, structured Markdown file. Designed to streamline context sharing with Large Language Models (LLMs), it features intelligent .gitignore rule parsing, automatic binary file exclusion, and a direct-to-clipboard export option to seamlessly capture your entire codebase context in seconds.
