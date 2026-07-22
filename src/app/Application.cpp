@@ -129,8 +129,7 @@ void Application::Run() const
 
 	if (m_requiresConfirmation)
 	{
-		std::cout << "Будет просканирована директория:\n"
-				  << m_rootPath.string() << "\n"
+		std::cout << "Будет просканирована текущая директория\n"
 				  << "Продолжить? (y/n): ";
 
 		std::string answer;
