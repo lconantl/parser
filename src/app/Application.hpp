@@ -1,7 +1,7 @@
 #pragma once
 
 #include "IAppMode.hpp"
-#include <filesystem>
+#include "app/launch/LaunchOptions.hpp"
 #include <memory>
 
 class Application
@@ -13,9 +13,6 @@ public:
 	void Run() const;
 
 private:
-	std::filesystem::path m_rootPath;
-	bool m_useClipboard;
-	bool m_isHelpRequested;
-	bool m_requiresConfirmation;
+	LaunchOptions m_options;
 	std::unique_ptr<IAppMode> m_mode;
 };
