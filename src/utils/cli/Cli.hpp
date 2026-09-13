@@ -1,7 +1,72 @@
 #pragma once
 
+/**
+ * cli::FlagDispatcher - header-only разбор флагов командной строки без аргументов.
+ * Требуется C++20. Реализует паттерн Команда (GoF).
+ *
+ * БЫСТРЫЙ СТАРТ
+ *
+ *   struct Options
+ *   {
+ *       bool isHelpRequested = false;
+ *       bool useClipboard = false;
+ *   };
+ *
+ *   cli::FlagDispatcher<Options> dispatcher;
+ *   dispatcher.BindSwitch({ 'h', "help", "Показать справку" }, &Options::isHelpRequested);
+ *   dispatcher.BindSwitch({ 'c', "clipboard", "Скопировать в буфер" }, &Options::useClipboard);
+ *   dispatcher.AddConflict('c', 'h');
+ *
+ *   Options options;
+ *   std::vector<std::string> paths = dispatcher.Dispatch(cli::ReadArguments(argc, argv), options);
+ *
+ * ПОДДЕРЖИВАЕМЫЙ СИНТАКСИС
+ *
+ *   -c              короткий флаг
+ *   -ch             склейка коротких флагов, эквивалентна -c -h
+ *   --clipboard     длинный флаг
+ *   --              конец флагов, всё дальше считается позиционным аргументом
+ *   -               позиционный аргумент (по соглашению stdin/stdout)
+ *
+ * НЕ ПОДДЕРЖИВАЕТСЯ
+ *
+ *   -o file, --output=file   флаги со значением, --long=value отклоняется с ошибкой
+ *   --clip                   сокращения длинных имён в стиле GNU
+ *   -vvv                     счётчики, повтор флага срабатывает ровно один раз
+ *
+ * РОЛИ ПАТТЕРНА КОМАНДА
+ *
+ *   Command          ICommand<Receiver>
+ *   ConcreteCommand  SetSwitchCommand (выставляет поле), ActionCommand (вызывает лямбду)
+ *   Receiver         пользовательская структура опций
+ *   Invoker          FlagDispatcher
+ *   Client           код, вызывающий BindSwitch и BindAction
+ *
+ *   Получатель передаётся в Execute(Receiver&), а не хранится в команде. Это исключает
+ *   висячие ссылки и делает диспетчер безсостояточным: его можно создавать и
+ *   переиспользовать в любой момент.
+ *
+ * ПРАВИЛА ПОВЕДЕНИЯ
+ *
+ *   1. Команды выполняются в порядке регистрации, а не в порядке argv, поэтому -ch и -hc
+ *      эквивалентны. Правило "последний победил" (как -l и -1 у ls) не поддерживается:
+ *      для него нужен порядок из argv.
+ *   2. Сначала разбирается вся строка, затем проверяются конфликты и только потом
+ *      выполняются команды. При любой ошибке получатель остаётся нетронутым.
+ *   3. ReadArguments пропускает argv[0], обрезает пробелы по краям аргументов и
+ *      отбрасывает пустые строки. Путь с пробелами по краям будет подрезан.
+ *
+ * ИСКЛЮЧЕНИЯ
+ *
+ *   cli::UsageError       ошибка пользователя: неизвестный флаг, значение у флага,
+ *                         конфликт флагов. Принято печатать справку и возвращать EXIT_CODE.
+ *   std::logic_error      ошибка программиста: дубликат флага, конфликт для
+ *   std::invalid_argument незарегистрированного флага, некорректное имя, пустая команда.
+ */
+
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <functional>
 #include <iomanip>
 #include <memory>
@@ -16,6 +81,17 @@
 
 namespace cli
 {
+class UsageError : public std::runtime_error
+{
+public:
+	static constexpr int EXIT_CODE = 2;
+
+	explicit UsageError(const std::string& message)
+		: std::runtime_error(message)
+	{
+	}
+};
+
 struct FlagSpec
 {
 	char shortName;
@@ -34,6 +110,8 @@ public:
 
 namespace detail
 {
+inline constexpr std::size_t NotFound = static_cast<std::size_t>(-1);
+
 template <typename Receiver>
 struct Binding
 {
@@ -43,6 +121,14 @@ struct Binding
 
 template <typename Receiver>
 using Bindings = std::vector<Binding<Receiver>>;
+
+struct Conflict
+{
+	std::size_t first;
+	std::size_t second;
+};
+
+using Conflicts = std::vector<Conflict>;
 
 struct ParseResult
 {
@@ -124,11 +210,27 @@ void AssertIsUnique(const Bindings<Receiver>& bindings, const FlagSpec& spec)
 	}
 }
 
-inline void AssertIsKnownFlag(const bool isKnown, const std::string& flag)
+inline void AssertIsRegistered(const std::size_t index, const char name)
 {
-	if (!isKnown)
+	if (index == NotFound)
 	{
-		throw std::invalid_argument("Неизвестный флаг: " + flag);
+		throw std::logic_error("Флаг не зарегистрирован: -" + std::string(1, name));
+	}
+}
+
+inline void AssertAreDifferent(const std::size_t first, const std::size_t second)
+{
+	if (first == second)
+	{
+		throw std::logic_error("Флаг не может конфликтовать сам с собой");
+	}
+}
+
+inline void AssertIsKnownFlag(const std::size_t index, const std::string& flag)
+{
+	if (index == NotFound)
+	{
+		throw UsageError("Неизвестный флаг: " + flag);
 	}
 }
 
@@ -136,8 +238,7 @@ inline void AssertHasNoValue(const std::string_view name)
 {
 	if (HasValueSeparator(name))
 	{
-		throw std::invalid_argument(
-			"Флаг --" + std::string(StripValue(name)) + " не принимает значение");
+		throw UsageError("Флаг --" + std::string(StripValue(name)) + " не принимает значение");
 	}
 }
 
@@ -170,25 +271,32 @@ inline bool IsShortFlagGroup(const std::string_view argument) noexcept
 }
 
 template <typename Receiver>
-std::size_t FindByLongName(const Bindings<Receiver>& bindings, const std::string_view name)
+std::size_t FindIndexByLongName(const Bindings<Receiver>& bindings, const std::string_view name)
 {
 	const auto it = std::ranges::find_if(bindings, [name](const auto& binding) {
 		return binding.spec.longName == name;
 	});
 
-	AssertIsKnownFlag(it != bindings.end(), "--" + std::string(name));
-	return static_cast<std::size_t>(it - bindings.begin());
+	return it == bindings.end() ? NotFound : static_cast<std::size_t>(it - bindings.begin());
 }
 
 template <typename Receiver>
-std::size_t FindByShortName(const Bindings<Receiver>& bindings, const char name)
+std::size_t FindIndexByShortName(const Bindings<Receiver>& bindings, const char name)
 {
 	const auto it = std::ranges::find_if(bindings, [name](const auto& binding) {
 		return binding.spec.shortName == name;
 	});
 
-	AssertIsKnownFlag(it != bindings.end(), std::string("-") + name);
-	return static_cast<std::size_t>(it - bindings.begin());
+	return it == bindings.end() ? NotFound : static_cast<std::size_t>(it - bindings.begin());
+}
+
+template <typename Receiver>
+std::size_t ResolveRegisteredFlag(const Bindings<Receiver>& bindings, const char name)
+{
+	const std::size_t index = FindIndexByShortName(bindings, name);
+	AssertIsRegistered(index, name);
+
+	return index;
 }
 
 template <typename Receiver>
@@ -196,7 +304,11 @@ void MarkLongFlag(
 	const Bindings<Receiver>& bindings, const std::string_view name, std::vector<bool>& triggered)
 {
 	AssertHasNoValue(name);
-	triggered[FindByLongName(bindings, name)] = true;
+
+	const std::size_t index = FindIndexByLongName(bindings, name);
+	AssertIsKnownFlag(index, "--" + std::string(name));
+
+	triggered[index] = true;
 }
 
 template <typename Receiver>
@@ -205,7 +317,10 @@ void MarkShortFlagGroup(
 {
 	for (const char name : group)
 	{
-		triggered[FindByShortName(bindings, name)] = true;
+		const std::size_t index = FindIndexByShortName(bindings, name);
+		AssertIsKnownFlag(index, "-" + std::string(1, name));
+
+		triggered[index] = true;
 	}
 }
 
@@ -248,6 +363,27 @@ ParseResult Parse(const Bindings<Receiver>& bindings, const std::vector<std::str
 }
 
 template <typename Receiver>
+void AssertHasNoConflict(
+	const Bindings<Receiver>& bindings, const Conflict& conflict, const std::vector<bool>& triggered)
+{
+	if (triggered[conflict.first] && triggered[conflict.second])
+	{
+		throw UsageError("Флаги --" + bindings[conflict.first].spec.longName + " и --"
+			+ bindings[conflict.second].spec.longName + " нельзя использовать одновременно");
+	}
+}
+
+template <typename Receiver>
+void AssertHasNoConflicts(
+	const Bindings<Receiver>& bindings, const Conflicts& conflicts, const std::vector<bool>& triggered)
+{
+	for (const Conflict& conflict : conflicts)
+	{
+		AssertHasNoConflict(bindings, conflict, triggered);
+	}
+}
+
+template <typename Receiver>
 void ExecuteTriggered(
 	const Bindings<Receiver>& bindings, const std::vector<bool>& triggered, Receiver& receiver)
 {
@@ -268,6 +404,7 @@ std::size_t CalculateNameWidth(const Bindings<Receiver>& bindings)
 	{
 		width = std::max(width, binding.spec.longName.size());
 	}
+
 	return width;
 }
 
@@ -359,11 +496,22 @@ public:
 		Bind(std::move(spec), std::make_unique<ActionCommand<Receiver>>(std::move(action)));
 	}
 
+	void AddConflict(const char first, const char second)
+	{
+		const std::size_t firstIndex = detail::ResolveRegisteredFlag(m_bindings, first);
+		const std::size_t secondIndex = detail::ResolveRegisteredFlag(m_bindings, second);
+		detail::AssertAreDifferent(firstIndex, secondIndex);
+
+		m_conflicts.push_back({firstIndex, secondIndex});
+	}
+
 	std::vector<std::string> Dispatch(
 		const std::vector<std::string>& arguments, Receiver& receiver) const
 	{
 		detail::ParseResult result = detail::Parse(m_bindings, arguments);
+		detail::AssertHasNoConflicts(m_bindings, m_conflicts, result.triggered);
 		detail::ExecuteTriggered(m_bindings, result.triggered, receiver);
+
 		return std::move(result.positionals);
 	}
 
@@ -374,6 +522,7 @@ public:
 
 private:
 	detail::Bindings<Receiver> m_bindings;
+	detail::Conflicts m_conflicts;
 };
 
 inline std::vector<std::string> ReadArguments(const int argc, const char* const* argv)
