@@ -1,5 +1,8 @@
 # Parser
 
+[![Release](https://img.shields.io/github/v/release/lconantl/parser)](https://github.com/lconantl/parser/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue)](license)
+
 Parser is a fast, lightweight CLI utility built in modern C++ that traverses your project
 directories and serializes the codebase into a single, structured Markdown file. Designed to
 streamline context sharing with Large Language Models (LLMs), it features intelligent
