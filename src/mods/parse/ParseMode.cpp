@@ -1,5 +1,6 @@
 #include "ParseMode.hpp"
 #include "reader/Reader.hpp"
+#include "utils/formatter/CodeLanguage.hpp"
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
@@ -45,7 +46,7 @@ void ProcessDirectory(
 	{
 		formatter.AddHeader(3, file.path().filename().string());
 		const std::string content = Reader::Read(file.path());
-		formatter.AddCodeBlock("", content);
+		formatter.AddCodeBlock(DetectCodeLanguage(file.path()), content);
 
 		outFilesCount++;
 
@@ -81,7 +82,7 @@ void ParseMode::Execute(MarkdownFormatter& formatter)
 
 	ProcessDirectory(m_rootPath, m_filter, formatter, filesCount, linesCount);
 
-	std::cout << "Статистика проекта" << std::endl;
+	std::cout << "\nСтатистика проекта" << std::endl;
 	std::cout << "Всего файлов: " + std::to_string(filesCount) << std::endl;
 	std::cout << "Всего строк кода: " + std::to_string(linesCount) << std::endl;
 }

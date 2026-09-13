@@ -2,9 +2,11 @@
 #include "app/launch/LaunchCommandLine.hpp"
 #include "filter/IgnoreFilter.hpp"
 #include "mods/default/DefaultMode.hpp"
+#include "mods/tree/TreeMode.hpp"
 #include "utils/cli/Cli.hpp"
 #include "utils/formatter/MarkdownFormatter.hpp"
 #include "writer/clipboard/ClipboardOutput.hpp"
+#include "writer/file/DumpFile.hpp"
 #include "writer/file/FileOutput.hpp"
 #include <iostream>
 #include <stdexcept>
@@ -20,10 +22,24 @@ void AssertModeAssigned(const IAppMode* mode)
 	}
 }
 
-std::unique_ptr<IAppMode> CreateDefaultMode(const std::filesystem::path& rootPath)
+IgnoreFilter CreateFilter(const std::filesystem::path& rootPath)
 {
-	const IgnoreFilter filter(rootPath / ".gitignore");
-	return std::make_unique<DefaultMode>(rootPath, filter);
+	IgnoreFilter filter(rootPath / ".gitignore");
+	filter.AddRule(DUMP_FILE_NAME);
+
+	return filter;
+}
+
+std::unique_ptr<IAppMode> CreateMode(const LaunchOptions& options)
+{
+	const IgnoreFilter filter = CreateFilter(options.rootPath);
+
+	if (options.isTreeOnly)
+	{
+		return std::make_unique<TreeMode>(options.rootPath, filter);
+	}
+
+	return std::make_unique<DefaultMode>(options.rootPath, filter);
 }
 
 bool IsPositiveAnswer(const std::string& answer)
@@ -60,7 +76,7 @@ void PrintSuccessMessage(const bool useClipboard)
 	}
 	else
 	{
-		std::cout << "Проект успешно собран в файл dump.md" << std::endl;
+		std::cout << "Проект успешно собран в файл " << DUMP_FILE_NAME << std::endl;
 	}
 }
 } // namespace
@@ -70,7 +86,7 @@ Application::Application(const int argc, char* argv[])
 {
 	if (!m_options.isHelpRequested)
 	{
-		m_mode = CreateDefaultMode(m_options.rootPath);
+		m_mode = CreateMode(m_options);
 	}
 }
 

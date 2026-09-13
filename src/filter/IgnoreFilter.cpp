@@ -42,7 +42,7 @@ std::vector<std::string> ReadRulesFromFile(const std::filesystem::path& path)
 	std::string line;
 	while (std::getline(file, line))
 	{
-		std::string cleanedLine = TrimWhitespace(line);
+		const auto cleanedLine = TrimWhitespace(line);
 		if (!IsCommentOrEmpty(cleanedLine))
 		{
 			rules.push_back(cleanedLine);
@@ -69,7 +69,8 @@ bool MatchPattern(const std::string& pattern, const std::string& text)
 	if (pattern.ends_with('/'))
 	{
 		const std::string dir = pattern.substr(0, pattern.length() - 1);
-		return text == dir || text.starts_with(dir + "/") || text.find("/" + dir + "/") != std::string::npos;
+		return text == dir || text.ends_with("/" + dir) || text.starts_with(dir + "/")
+			|| text.find("/" + dir + "/") != std::string::npos;
 	}
 
 	return text == pattern || text.ends_with("/" + pattern) || text.find("/" + pattern + "/") != std::string::npos;
@@ -87,7 +88,7 @@ IgnoreFilter::IgnoreFilter(const std::filesystem::path& gitignorePath)
 
 	if (std::filesystem::exists(gitignorePath) && std::filesystem::is_regular_file(gitignorePath))
 	{
-		std::vector<std::string> fileRules = ReadRulesFromFile(gitignorePath);
+		const std::vector<std::string> fileRules = ReadRulesFromFile(gitignorePath);
 		for (const auto& rule : fileRules)
 		{
 			AddRule(rule);

@@ -1,7 +1,6 @@
 #include "LaunchCommandLine.hpp"
 #include "utils/cli/Cli.hpp"
 #include <sstream>
-#include <stdexcept>
 
 namespace
 {
@@ -12,11 +11,15 @@ LaunchDispatcher CreateDispatcher()
 	LaunchDispatcher dispatcher;
 
 	dispatcher.BindSwitch(
-		{ 'h', "help", "Показать эту справку и выйти" },
+		{'h', "help", "Показать эту справку и выйти"},
 		&LaunchOptions::isHelpRequested);
 
 	dispatcher.BindSwitch(
-		{ 'c', "clipboard", "Скопировать результат в буфер обмена" },
+		{'t', "tree", "Вывести только структуру проекта, без содержимого файлов"},
+		&LaunchOptions::isTreeOnly);
+
+	dispatcher.BindSwitch(
+		{'c', "clipboard", "Скопировать результат в буфер обмена"},
 		&LaunchOptions::useClipboard);
 
 	return dispatcher;
@@ -26,7 +29,7 @@ void AssertHasAtMostOnePath(const std::vector<std::string>& positionals)
 {
 	if (positionals.size() > 1)
 	{
-		throw std::invalid_argument("Ожидается не более одного пути к проекту");
+		throw cli::UsageError("Ожидается не более одного пути к проекту");
 	}
 }
 
@@ -39,7 +42,7 @@ std::filesystem::path ResolveRootPath(const std::vector<std::string>& positional
 		return std::filesystem::current_path();
 	}
 
-	return { positionals.front() };
+	return {positionals.front()};
 }
 } // namespace
 
@@ -66,10 +69,13 @@ std::string BuildHelpMessage()
 		   << "Опции:" << std::endl
 		   << CreateDispatcher().BuildHelp() << std::endl
 		   << "Примеры:" << std::endl
-		   << "  parser           Собрать текущую папку в dump.md (спросит подтверждение)" << std::endl
-		   << "  parser .         Собрать текущую папку (без подтверждения)" << std::endl
-		   << "  parser -c        Собрать текущую папку в буфер обмена" << std::endl
-		   << "  parser -c C:\\App Собрать проект C:\\App в буфер обмена" << std::endl;
+		   << "  parser            Собрать текущую папку в dump.md (спросит подтверждение)"
+		   << std::endl
+		   << "  parser .          Собрать текущую папку (без подтверждения)" << std::endl
+		   << "  parser -c         Собрать текущую папку в буфер обмена" << std::endl
+		   << "  parser -t         Вывести только дерево проекта" << std::endl
+		   << "  parser -tc        Дерево проекта сразу в буфер обмена" << std::endl
+		   << "  parser -c C:\\App  Собрать проект C:\\App в буфер обмена" << std::endl;
 
 	return stream.str();
 }

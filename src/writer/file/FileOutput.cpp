@@ -1,6 +1,8 @@
 #include "FileOutput.hpp"
+#include "writer/file/DumpFile.hpp"
 #include <fstream>
 #include <stdexcept>
+#include <string>
 
 namespace
 {
@@ -16,7 +18,8 @@ void AssertFileStreamOpen(const std::ofstream& stream)
 {
 	if (!stream.is_open())
 	{
-		throw std::runtime_error("Не удалось открыть файл dump.md для записи");
+		throw std::runtime_error(
+			std::string("Не удалось открыть для записи файл ") + DUMP_FILE_NAME);
 	}
 }
 } // namespace
@@ -25,7 +28,7 @@ FileOutput::FileOutput(std::filesystem::path rootPath)
 	: m_outputPath(std::move(rootPath))
 {
 	AssertIsDirectoryValid(m_outputPath);
-	m_outputPath /= "dump.md";
+	m_outputPath /= DUMP_FILE_NAME;
 }
 
 FileOutput::~FileOutput() = default;
