@@ -6,6 +6,7 @@ Language Models (LLMs), it features intelligent .gitignore rule parsing, automat
 direct-to-clipboard export option to seamlessly capture your entire codebase context in seconds.
 
 - [Releases](https://github.com/lconantl/parser/releases/) - It is clear that I recommend downloading the latest one.
+- [Installation](docs/windows.md) - on Windows documentation
 
 ```
 Usage:
