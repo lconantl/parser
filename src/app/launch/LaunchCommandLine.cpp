@@ -58,18 +58,18 @@ std::string BuildHelpMessage()
 {
 	std::ostringstream stream;
 
-	stream << "Project Dumper - CLI утилита для сборки проекта в Markdown" << std::endl
+	stream << "Project Parser - CLI утилита для сборки проекта в Markdown" << std::endl
 		   << std::endl
 		   << "Использование:" << std::endl
-		   << "  dumper [путь_к_проекту] [опции]" << std::endl
+		   << "  parser [путь_к_проекту] [опции]" << std::endl
 		   << std::endl
 		   << "Опции:" << std::endl
 		   << CreateDispatcher().BuildHelp() << std::endl
 		   << "Примеры:" << std::endl
-		   << "  dumper           Собрать текущую папку в dump.md (спросит подтверждение)" << std::endl
-		   << "  dumper .         Собрать текущую папку (без подтверждения)" << std::endl
-		   << "  dumper -c        Собрать текущую папку в буфер обмена" << std::endl
-		   << "  dumper -c C:\\App Собрать проект C:\\App в буфер обмена" << std::endl;
+		   << "  parser           Собрать текущую папку в dump.md (спросит подтверждение)" << std::endl
+		   << "  parser .         Собрать текущую папку (без подтверждения)" << std::endl
+		   << "  parser -c        Собрать текущую папку в буфер обмена" << std::endl
+		   << "  parser -c C:\\App Собрать проект C:\\App в буфер обмена" << std::endl;
 
 	return stream.str();
 }
