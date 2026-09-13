@@ -1,12 +1,15 @@
 # Parser
 
-Project Dumper is a fast, lightweight CLI utility built in modern C++ that traverses your project directories and
-serializes the codebase into a single, structured Markdown file. Designed to streamline context sharing with Large
-Language Models (LLMs), it features intelligent .gitignore rule parsing, automatic binary file exclusion, and a
-direct-to-clipboard export option to seamlessly capture your entire codebase context in seconds.
+Parser is a fast, lightweight CLI utility built in modern C++ that traverses your project
+directories and serializes the codebase into a single, structured Markdown file. Designed to
+streamline context sharing with Large Language Models (LLMs), it features intelligent
+.gitignore rule parsing, automatic binary file exclusion, per-language syntax highlighting,
+and a direct-to-clipboard export option to capture your entire codebase context in seconds.
 
-- [Releases](https://github.com/lconantl/parser/releases/) - It is clear that I recommend downloading the latest one.
-- [Installation](docs/windows.md) - on Windows documentation
+- [Releases](https://github.com/lconantl/parser/releases/) — grab the latest one.
+- [Installation](docs/windows.md) — Windows setup guide.
+
+## Usage
 
 ```
 Usage:
@@ -25,3 +28,7 @@ Examples:
   parser -tc        Project tree directly to the clipboard
   parser -c C:\App  Collect the C:\App project to the clipboard
 ```
+
+## License
+
+[MIT](license)
