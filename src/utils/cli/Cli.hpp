@@ -66,7 +66,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cstddef>
 #include <functional>
 #include <iomanip>
 #include <memory>
@@ -249,7 +248,7 @@ inline bool IsWhitespace(const char symbol) noexcept
 
 inline std::string Trim(const std::string_view text)
 {
-	const auto begin = std::find_if_not(text.begin(), text.end(), IsWhitespace);
+	const auto begin = std::ranges::find_if_not(text, IsWhitespace);
 	const auto end = std::find_if_not(text.rbegin(), text.rend(), IsWhitespace).base();
 
 	return begin < end ? std::string(begin, end) : std::string();
@@ -474,7 +473,7 @@ template <typename Receiver>
 class FlagDispatcher
 {
 public:
-	using Action = typename ActionCommand<Receiver>::Action;
+	using Action = ActionCommand<Receiver>::Action;
 
 	void Bind(FlagSpec spec, std::unique_ptr<ICommand<Receiver>> command)
 	{
@@ -515,7 +514,7 @@ public:
 		return std::move(result.positionals);
 	}
 
-	std::string BuildHelp() const
+	[[nodiscard]] std::string BuildHelp() const
 	{
 		return detail::BuildHelp(m_bindings);
 	}
